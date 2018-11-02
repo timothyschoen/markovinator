@@ -1,0 +1,7 @@
+Put this under <racket>/collects/csd
+
+Examples
+
+  osc_receive.rkt
+  osc_send.rkt
+
