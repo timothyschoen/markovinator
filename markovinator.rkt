@@ -17,7 +17,7 @@
 
   (define (markovinator markov_order)
   ;(connect port-in port-out)
-  (define startlist (build-list (+ markov_order 2) (lambda (x) '(0 0 0))))
+  (define startlist (build-list (+ markov_order 5) (lambda (x) '(0 0 0))))
   (define noteslist (compose-list markov_order))
   (define player (thread (lambda () (playthread noteslist markov_order startlist))))
 
@@ -36,14 +36,21 @@
     (if (false? received) (begin (if (eq? state 1) (displayln "Chain up-to-date") null) lst)
     (begin (displayln "Updating Chain...") (receiver received 1))))
 
-    (define (playthread noteslist markov_order allnotes)
+    (define (playthread noteslist markov_order allnotes {previoustime (current-inexact-milliseconds)})
         (define newlist (receiver noteslist 0))
         (define nextlist (select-list newlist markov_order (map first allnotes)))
 
-        (define fixedlist (if (empty? (rest nextlist)) (list (first (shuffle allnotes))) (rest nextlist)))
+        (define fixedlist (if (empty? (rest nextlist)) allnotes (rest nextlist)))
         (define newnote (first (shuffle fixedlist)))
-        (define n_allnotes (append (list newnote) allnotes))
-        (sleep (/ (last newnote) 1000))
+
+        (define finalnote (if
+        (and (>= 20 (last newnote)) (>= 20 (last (first allnotes))) (>= 20 (last (second allnotes))) (>= 20 (last (third allnotes))))
+        (list-set newnote (- (length newnote) 1) (if (empty? (filter (lambda (x) (>= x 40)) (map last allnotes))) 200 (first (shuffle (filter (lambda (x) (>= x 40)) (map last allnotes)))))) newnote))
+
+        (define n_allnotes (append (list finalnote) allnotes))
+        (define sleeptime (-  (last finalnote) (- (current-inexact-milliseconds) previoustime)))
+
+        (sleep (/ (if (negative? sleeptime) 0 sleeptime) 1000))
         ;(sleep 0.25)
-        (send-osc-message "/note" newnote)
-        (playthread newlist markov_order n_allnotes ))
+        (send-osc-message "/note" finalnote)
+        (playthread newlist markov_order n_allnotes))
